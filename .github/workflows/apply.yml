@@ -27,8 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
-      TAILSCALE_OAUTH_CLIENT_ID: ${{ env.TAILSCALE_OAUTH_CLIENT_ID }}
-      TAILSCALE_OAUTH_SECRET: ${{ env.TAILSCALE_OAUTH_SECRET }}
+      TAILSCALE_OAUTH_CLIENT_ID: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+      TAILSCALE_OAUTH_SECRET: ${{ secrets.TAILSCALE_OAUTH_SECRET }}
       LIBVIRT_DEFAULT_URI: ${{ secrets.LIBVIRT_URI }}
       ARC_GITHUB_CONFIG_URL: ${{ secrets.ARC_GITHUB_CONFIG_URL }}
       ARC_GITHUB_APP_ID: ${{ secrets.ARC_GITHUB_APP_ID }}
@@ -105,8 +105,8 @@ jobs:
         if: ${{ (inputs.run_terraform || inputs.run_arc_install || inputs.run_kvm_autoscaler_apply) && env.TAILSCALE_OAUTH_CLIENT_ID != '' && env.TAILSCALE_OAUTH_SECRET != '' }}
         uses: tailscale/github-action@v3
         with:
-          oauth-client-id: ${{ env.TAILSCALE_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ env.TAILSCALE_OAUTH_SECRET }}
+          oauth-client-id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TAILSCALE_OAUTH_SECRET }}
           tags: tag:ci
 
       - name: Connect runner to tailnet (Authkey fallback)
