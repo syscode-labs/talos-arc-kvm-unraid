@@ -1,0 +1,52 @@
+name: apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_terraform:
+        type: boolean
+        default: true
+        required: true
+      run_arc_install:
+        type: boolean
+        default: true
+        required: true
+
+jobs:
+  apply:
+    runs-on: [self-hosted, linux]
+    env:
+      LIBVIRT_DEFAULT_URI: ${{ secrets.LIBVIRT_URI }}
+      ARC_GITHUB_CONFIG_URL: ${{ secrets.ARC_GITHUB_CONFIG_URL }}
+      ARC_GITHUB_APP_ID: ${{ secrets.ARC_GITHUB_APP_ID }}
+      ARC_GITHUB_APP_INSTALLATION_ID: ${{ secrets.ARC_GITHUB_APP_INSTALLATION_ID }}
+      ARC_GITHUB_APP_PRIVATE_KEY: ${{ secrets.ARC_GITHUB_APP_PRIVATE_KEY }}
+      ARC_MAX_RUNNERS: ${{ secrets.ARC_MAX_RUNNERS }}
+      ARC_MIN_RUNNERS: ${{ secrets.ARC_MIN_RUNNERS }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Write talosconfig
+        if: ${{ secrets.TALOSCONFIG_B64 != '' }}
+        run: |
+          mkdir -p "$HOME/.talos"
+          echo "${{ secrets.TALOSCONFIG_B64 }}" | base64 -d > "$HOME/.talos/config"
+
+      - name: Write kubeconfig
+        if: ${{ secrets.KUBECONFIG_B64 != '' }}
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > "$HOME/.kube/config"
+
+      - name: Terraform apply (libvirt)
+        if: ${{ inputs.run_terraform }}
+        working-directory: terraform/libvirt
+        run: |
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Install ARC
+        if: ${{ inputs.run_arc_install }}
+        run: |
+          ./k8s/arc/install.sh

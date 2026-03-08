@@ -14,13 +14,13 @@ Declarative Talos + ARC on Unraid, with `/dev/kvm` available to selected GitHub 
 - `terraform/libvirt`: VM infrastructure definitions
 - `talos/`: Talos cluster config and patch files
 - `k8s/arc/`: ARC Helm values and runner scale-set values
-- `.github/workflows/`: smoke workflows for validation
+- `.github/workflows/`: apply + smoke workflows
 
 ## Prerequisites
 
 - Unraid virtualization enabled (`/dev/kvm` present)
 - libvirt available on host
-- `terraform`, `talosctl`, `kubectl`, `helm`
+- `terraform`, `talosctl`, `kubectl`, `helm`, `envsubst`
 - GitHub App credentials for ARC
 
 ## Quick Flow
@@ -41,3 +41,14 @@ If compatibility issues appear for Docker-dependent jobs, add a second runner cl
 
 - `/dev/kvm` is a shared character device. Multiple VMs/processes can use it concurrently.
 - Capacity limits are CPU/RAM/IO, not a one-device-per-VM restriction.
+
+## GitHub Secrets Required (apply workflow)
+
+- `LIBVIRT_URI`
+- `TALOSCONFIG_B64`
+- `KUBECONFIG_B64`
+- `ARC_GITHUB_CONFIG_URL`
+- `ARC_GITHUB_APP_ID`
+- `ARC_GITHUB_APP_INSTALLATION_ID`
+- `ARC_GITHUB_APP_PRIVATE_KEY`
+- Optional: `ARC_MAX_RUNNERS`, `ARC_MIN_RUNNERS`
