@@ -27,6 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+      TAILSCALE_OAUTH_CLIENT_ID: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+      TAILSCALE_OAUTH_SECRET: ${{ secrets.TAILSCALE_OAUTH_SECRET }}
       LIBVIRT_DEFAULT_URI: ${{ secrets.LIBVIRT_URI }}
       ARC_GITHUB_CONFIG_URL: ${{ secrets.ARC_GITHUB_CONFIG_URL }}
       ARC_GITHUB_APP_ID: ${{ secrets.ARC_GITHUB_APP_ID }}
@@ -44,23 +46,53 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Connect runner to tailnet
-        uses: tailscale/github-action@v3
-        with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
-          tags: tag:ci
+      - name: Validate input mode
+        run: |
+          if [ "${{ inputs.run_terraform }}" != "true" ] && [ "${{ inputs.run_arc_install }}" != "true" ] && [ "${{ inputs.run_kvm_autoscaler_apply }}" != "true" ]; then
+            echo "No operations selected; this is a dry run."
+          fi
 
       - name: Validate required secrets
         run: |
-          required=(TAILSCALE_AUTHKEY ARC_GITHUB_CONFIG_URL ARC_GITHUB_APP_ID ARC_GITHUB_APP_INSTALLATION_ID ARC_GITHUB_APP_PRIVATE_KEY)
-          for key in "${required[@]}"; do
-            if [ -z "${!key:-}" ]; then
-              echo "Missing required secret: ${key}" >&2
+          any_ops=false
+          if [ "${{ inputs.run_terraform }}" = "true" ] || [ "${{ inputs.run_arc_install }}" = "true" ] || [ "${{ inputs.run_kvm_autoscaler_apply }}" = "true" ]; then
+            any_ops=true
+          fi
+
+          if [ "$any_ops" = "true" ]; then
+            has_oauth=true
+            if [ -z "${TAILSCALE_OAUTH_CLIENT_ID:-}" ] || [ -z "${TAILSCALE_OAUTH_SECRET:-}" ]; then
+              has_oauth=false
+            fi
+
+            has_authkey=true
+            if [ -z "${TAILSCALE_AUTHKEY:-}" ]; then
+              has_authkey=false
+            fi
+
+            if [ "$has_oauth" != "true" ] && [ "$has_authkey" != "true" ]; then
+              echo "Missing Tailscale credentials: set OAuth client secrets (preferred) or TAILSCALE_AUTHKEY" >&2
               exit 1
             fi
-          done
+          fi
+
+          if [ "${{ inputs.run_terraform }}" = "true" ] && [ -z "${LIBVIRT_DEFAULT_URI:-}" ]; then
+            echo "Missing required secret for terraform: LIBVIRT_URI" >&2
+            exit 1
+          fi
+
+          if [ "${{ inputs.run_arc_install }}" = "true" ]; then
+            arc_required=(ARC_GITHUB_CONFIG_URL ARC_GITHUB_APP_ID ARC_GITHUB_APP_INSTALLATION_ID ARC_GITHUB_APP_PRIVATE_KEY KUBECONFIG_B64)
+            for key in "${arc_required[@]}"; do
+              if [ -z "${!key:-}" ]; then
+                echo "Missing required secret for ARC install: ${key}" >&2
+                exit 1
+              fi
+            done
+          fi
+
           if [ "${{ inputs.run_kvm_autoscaler_apply }}" = "true" ]; then
-            autoscaler_required=(KVM_AUTOSCALER_UNRAID_SSH_TARGET KVM_AUTOSCALER_SSH_PRIVATE_KEY)
+            autoscaler_required=(KVM_AUTOSCALER_UNRAID_SSH_TARGET KVM_AUTOSCALER_SSH_PRIVATE_KEY KUBECONFIG_B64)
             for key in "${autoscaler_required[@]}"; do
               if [ -z "${!key:-}" ]; then
                 echo "Missing required secret for autoscaler: ${key}" >&2
@@ -69,7 +101,23 @@ jobs:
             done
           fi
 
+      - name: Connect runner to tailnet (OAuth)
+        if: ${{ (inputs.run_terraform || inputs.run_arc_install || inputs.run_kvm_autoscaler_apply) && secrets.TAILSCALE_OAUTH_CLIENT_ID != '' && secrets.TAILSCALE_OAUTH_SECRET != '' }}
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TAILSCALE_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Connect runner to tailnet (Authkey fallback)
+        if: ${{ (inputs.run_terraform || inputs.run_arc_install || inputs.run_kvm_autoscaler_apply) && (secrets.TAILSCALE_OAUTH_CLIENT_ID == '' || secrets.TAILSCALE_OAUTH_SECRET == '') }}
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          tags: tag:ci
+
       - name: Install toolchain
+        if: ${{ inputs.run_arc_install || inputs.run_kvm_autoscaler_apply }}
         run: |
           sudo apt-get update
           sudo apt-get install -y gettext-base
@@ -83,6 +131,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Write talosconfig
+        if: ${{ inputs.run_arc_install || inputs.run_kvm_autoscaler_apply }}
         run: |
           if [ -n "${TALOSCONFIG_B64:-}" ]; then
             mkdir -p "$HOME/.talos"
@@ -92,13 +141,10 @@ jobs:
           fi
 
       - name: Write kubeconfig
+        if: ${{ inputs.run_arc_install || inputs.run_kvm_autoscaler_apply }}
         run: |
-          if [ -n "${KUBECONFIG_B64:-}" ]; then
-            mkdir -p "$HOME/.kube"
-            echo "$KUBECONFIG_B64" | base64 -d > "$HOME/.kube/config"
-          else
-            echo "KUBECONFIG_B64 is empty; skipping kubeconfig write"
-          fi
+          mkdir -p "$HOME/.kube"
+          echo "$KUBECONFIG_B64" | base64 -d > "$HOME/.kube/config"
 
       - name: Terraform apply (manual-only fallback)
         if: ${{ inputs.run_terraform }}
