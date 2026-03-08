@@ -1,0 +1,15 @@
+{
+  "name": "talos-arc-kvm-unraid-docs",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Read-the-docs style VitePress site for Talos + ARC + KVM on Unraid",
+  "type": "module",
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  }
+}

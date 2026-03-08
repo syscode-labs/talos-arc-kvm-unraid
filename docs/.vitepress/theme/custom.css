@@ -1,0 +1,62 @@
+:root {
+  --blog-bg-primary: #ffffff;
+  --blog-bg-secondary: #f6f6f7;
+  --blog-bg-card: rgba(255, 255, 255, 0.95);
+  --blog-text-primary: #3c3c43;
+  --blog-text-secondary: #67676c;
+  --blog-text-muted: #929295;
+  --blog-accent: #3451b2;
+  --blog-accent-hover: #3a5ccc;
+  --blog-accent-dim: rgba(100, 108, 255, 0.14);
+  --blog-highlight-dim: rgba(16, 185, 129, 0.14);
+  --blog-border: #c2c2c4;
+  --blog-code-bg: #f6f6f7;
+  --blog-code-text: #3451b2;
+
+  --vp-c-bg: var(--blog-bg-primary);
+  --vp-c-bg-alt: var(--blog-bg-secondary);
+  --vp-c-bg-elv: var(--blog-bg-card);
+  --vp-c-bg-soft: var(--blog-bg-secondary);
+  --vp-c-text-1: var(--blog-text-primary);
+  --vp-c-text-2: var(--blog-text-secondary);
+  --vp-c-text-3: var(--blog-text-muted);
+  --vp-c-border: var(--blog-border);
+  --vp-c-divider: var(--blog-border);
+  --vp-c-brand-1: var(--blog-accent);
+  --vp-c-brand-2: var(--blog-accent-hover);
+  --vp-c-brand-3: var(--blog-accent);
+  --vp-c-brand-soft: var(--blog-accent-dim);
+  --vp-c-default-soft: var(--blog-highlight-dim);
+  --vp-code-block-bg: var(--blog-code-bg);
+}
+
+.dark {
+  --blog-bg-primary: #1b1b1f;
+  --blog-bg-secondary: #161618;
+  --blog-bg-card: rgba(32, 33, 39, 0.95);
+  --blog-text-primary: #dfdfd6;
+  --blog-text-secondary: #98989f;
+  --blog-text-muted: #6a6a71;
+  --blog-accent: #5c73e7;
+  --blog-accent-hover: #a8b1ff;
+  --blog-accent-dim: rgba(100, 108, 255, 0.2);
+  --blog-highlight-dim: rgba(16, 185, 129, 0.16);
+  --blog-border: #3c3f44;
+  --blog-code-bg: #202127;
+  --blog-code-text: #a8b1ff;
+}
+
+.VPDoc .container {
+  max-width: 1200px !important;
+}
+
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3 {
+  letter-spacing: 0.01em;
+}
+
+.vp-doc :not(pre) > code {
+  color: var(--blog-code-text);
+  background: var(--blog-code-bg);
+}

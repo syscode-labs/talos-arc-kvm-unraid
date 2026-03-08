@@ -46,3 +46,17 @@ Declarative Talos + ARC on Unraid with a dedicated tainted KVM worker pool for h
 ## GitHub Secrets
 
 See `SECRETS.md`.
+
+## Documentation Site
+
+Comprehensive operational docs are available via GitHub Pages (VitePress):
+
+- Source: `docs/`
+- Deploy workflow: `.github/workflows/docs-pages.yml`
+- Expected URL: `https://syscode-labs.github.io/talos-arc-kvm-unraid/`
+
+Manuals included:
+
+- Architecture manual
+- User manual (operator-focused)
+- Service manual (SRE/runbook-focused)
