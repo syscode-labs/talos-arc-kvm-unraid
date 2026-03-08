@@ -13,12 +13,16 @@ Inputs:
 Behavior:
 
 1. Checks out repo.
-2. Connects to tailnet using `TAILSCALE_AUTHKEY`.
-3. Validates required secrets.
+2. Connects to tailnet using Tailscale OAuth credentials (authkey fallback supported).
+3. Validates required secrets for selected operation mode.
 4. Installs helm/kubectl toolchain.
 5. Optionally runs Terraform apply.
 6. Deploys ARC scale sets.
 7. Applies autoscaler and SSH secret.
+
+Operational SOP:
+
+- [SOP: Add Tailscale OAuth Secrets](./tailscale-oauth-sop)
 
 ## kvm-smoke workflow
 

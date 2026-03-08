@@ -13,6 +13,10 @@ Fallback:
 
 - `TAILSCALE_AUTHKEY`
 
+For exact UI path and steps, use:
+
+- [SOP: Add Tailscale OAuth Secrets](/user-manual/tailscale-oauth-sop)
+
 ## Required for ARC install
 
 - `ARC_GITHUB_CONFIG_URL`

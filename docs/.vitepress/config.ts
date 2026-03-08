@@ -38,6 +38,7 @@ export default defineConfig({
           { text: 'Terraform Manual Apply', link: '/user-manual/terraform-apply' },
           { text: 'ARC and Runner Classes', link: '/user-manual/arc-runners' },
           { text: 'GitHub Workflows', link: '/user-manual/workflows' },
+          { text: 'SOP: Tailscale OAuth Secrets', link: '/user-manual/tailscale-oauth-sop' },
           { text: 'Validation and Smoke Tests', link: '/user-manual/validation' }
         ]
       },
@@ -45,6 +46,7 @@ export default defineConfig({
         text: 'Service Manual',
         items: [
           { text: 'SRE Runbook', link: '/service-manual/' },
+          { text: 'SOP Policy', link: '/service-manual/sop-policy' },
           { text: 'Autoscaler Operations', link: '/service-manual/autoscaler' },
           { text: 'Incidents and Recovery', link: '/service-manual/incidents' },
           { text: 'Upgrade and Change Management', link: '/service-manual/upgrades' },
