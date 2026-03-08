@@ -23,21 +23,29 @@ jobs:
       ARC_GITHUB_APP_PRIVATE_KEY: ${{ secrets.ARC_GITHUB_APP_PRIVATE_KEY }}
       ARC_MAX_RUNNERS: ${{ secrets.ARC_MAX_RUNNERS }}
       ARC_MIN_RUNNERS: ${{ secrets.ARC_MIN_RUNNERS }}
+      TALOSCONFIG_B64: ${{ secrets.TALOSCONFIG_B64 }}
+      KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Write talosconfig
-        if: ${{ secrets.TALOSCONFIG_B64 != '' }}
         run: |
-          mkdir -p "$HOME/.talos"
-          echo "${{ secrets.TALOSCONFIG_B64 }}" | base64 -d > "$HOME/.talos/config"
+          if [ -n "${TALOSCONFIG_B64:-}" ]; then
+            mkdir -p "$HOME/.talos"
+            echo "$TALOSCONFIG_B64" | base64 -d > "$HOME/.talos/config"
+          else
+            echo "TALOSCONFIG_B64 is empty; skipping talosconfig write"
+          fi
 
       - name: Write kubeconfig
-        if: ${{ secrets.KUBECONFIG_B64 != '' }}
         run: |
-          mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > "$HOME/.kube/config"
+          if [ -n "${KUBECONFIG_B64:-}" ]; then
+            mkdir -p "$HOME/.kube"
+            echo "$KUBECONFIG_B64" | base64 -d > "$HOME/.kube/config"
+          else
+            echo "KUBECONFIG_B64 is empty; skipping kubeconfig write"
+          fi
 
       - name: Terraform apply (libvirt)
         if: ${{ inputs.run_terraform }}
