@@ -1,0 +1,14 @@
+name: kvm-smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: [self-hosted, linux, arc, kvm]
+    steps:
+      - name: Verify /dev/kvm exists
+        run: |
+          ls -l /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm

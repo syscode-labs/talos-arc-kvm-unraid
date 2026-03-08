@@ -1,0 +1,26 @@
+githubConfigUrl: https://github.com/syscode-labs
+githubConfigSecret: arc-gha-secret
+
+maxRunners: 6
+minRunners: 0
+
+containerMode:
+  type: kubernetes
+
+template:
+  spec:
+    nodeSelector:
+      arc.syscode.dev/kvm: "true"
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+        securityContext:
+          runAsNonRoot: false
+    volumes:
+      - name: dev-kvm
+        hostPath:
+          path: /dev/kvm
+          type: CharDevice
+    volumeMounts:
+      - name: dev-kvm
+        mountPath: /dev/kvm
