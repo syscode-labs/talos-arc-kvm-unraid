@@ -28,17 +28,32 @@ variable "controlplane_count" {
   default = 1
 }
 
-variable "worker_count" {
+variable "general_worker_count" {
+  type    = number
+  default = 1
+}
+
+variable "kvm_worker_pool_size" {
+  type    = number
+  default = 3
+}
+
+variable "vcpu_controlplane" {
   type    = number
   default = 2
 }
 
-variable "vcpu" {
+variable "memory_mb_controlplane" {
+  type    = number
+  default = 4096
+}
+
+variable "vcpu_worker" {
   type    = number
   default = 2
 }
 
-variable "memory_mb" {
+variable "memory_mb_worker" {
   type    = number
   default = 4096
 }
@@ -46,4 +61,9 @@ variable "memory_mb" {
 variable "disk_size_bytes" {
   type    = number
   default = 42949672960
+}
+
+variable "kvm_workers_start_running" {
+  type    = bool
+  default = false
 }

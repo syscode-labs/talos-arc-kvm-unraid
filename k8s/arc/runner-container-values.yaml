@@ -1,8 +1,8 @@
 githubConfigUrl: ${ARC_GITHUB_CONFIG_URL}
 githubConfigSecret: arc-gha-secret
 
-maxRunners: ${ARC_MAX_RUNNERS}
-minRunners: ${ARC_MIN_RUNNERS}
+maxRunners: ${ARC_CONTAINER_MAX_RUNNERS}
+minRunners: ${ARC_CONTAINER_MIN_RUNNERS}
 
 containerMode:
   type: kubernetes
@@ -10,17 +10,9 @@ containerMode:
 template:
   spec:
     nodeSelector:
-      arc.example.dev/kvm: "true"
+      nodepool.syscode.dev/type: general
     containers:
       - name: runner
         image: ghcr.io/actions/actions-runner:latest
         securityContext:
           runAsNonRoot: false
-    volumes:
-      - name: dev-kvm
-        hostPath:
-          path: /dev/kvm
-          type: CharDevice
-    volumeMounts:
-      - name: dev-kvm
-        mountPath: /dev/kvm

@@ -1,0 +1,119 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kvm-pool-autoscaler
+spec:
+  schedule: "*/2 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: kvm-pool-autoscaler
+          restartPolicy: Never
+          containers:
+            - name: autoscaler
+              image: ubuntu:24.04
+              command:
+                - /bin/bash
+                - -lc
+                - |
+                  set -euo pipefail
+                  apt-get update
+                  apt-get install -y --no-install-recommends ca-certificates curl jq openssh-client
+                  rm -rf /var/lib/apt/lists/*
+                  curl -fsSL -o /usr/local/bin/kubectl https://dl.k8s.io/release/v1.31.4/bin/linux/amd64/kubectl
+                  chmod +x /usr/local/bin/kubectl
+                  /scripts/scale.sh
+              env:
+                - name: ARC_NAMESPACE
+                  value: arc-systems
+                - name: ARC_DIND_RELEASE_NAME
+                  value: arc-runners-dind
+                - name: RUNNERS_PER_NODE
+                  value: "2"
+                - name: MIN_KVM_NODES
+                  value: "0"
+                - name: MAX_KVM_NODES
+                  value: "3"
+                - name: KVM_NODE_NAMES
+                  value: arc-talos-kvm-1,arc-talos-kvm-2,arc-talos-kvm-3
+                - name: UNRAID_SSH_TARGET
+                  valueFrom:
+                    secretKeyRef:
+                      name: kvm-pool-autoscaler
+                      key: unraid_ssh_target
+                - name: SSH_KEY_PATH
+                  value: /etc/ssh/id_ed25519
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                - name: ssh-key
+                  mountPath: /etc/ssh
+                  readOnly: true
+          volumes:
+            - name: script
+              configMap:
+                name: kvm-pool-autoscaler-script
+                defaultMode: 0755
+            - name: ssh-key
+              secret:
+                secretName: kvm-pool-autoscaler
+                defaultMode: 0400
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kvm-pool-autoscaler-script
+data:
+  scale.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    NAMESPACE="${ARC_NAMESPACE:-arc-systems}"
+    DIND_RELEASE="${ARC_DIND_RELEASE_NAME:-arc-runners-dind}"
+    NODES_CSV="${KVM_NODE_NAMES:?set KVM_NODE_NAMES}"
+    SSH_TARGET="${UNRAID_SSH_TARGET:?set UNRAID_SSH_TARGET}"
+    SSH_KEY_PATH="${SSH_KEY_PATH:-/etc/ssh/id_ed25519}"
+    RUNNERS_PER_NODE="${RUNNERS_PER_NODE:-2}"
+    MIN_NODES="${MIN_KVM_NODES:-0}"
+    MAX_NODES="${MAX_KVM_NODES:-3}"
+    
+    mapfile -t NODES < <(echo "$NODES_CSV" | tr ',' '\n' | sed 's/^ *//;s/ *$//' | sed '/^$/d')
+    
+    if [ "${#NODES[@]}" -eq 0 ]; then
+      echo "No nodes provided in KVM_NODE_NAMES" >&2
+      exit 1
+    fi
+    
+    if [ "$MAX_NODES" -gt "${#NODES[@]}" ]; then
+      MAX_NODES="${#NODES[@]}"
+    fi
+    
+    pending_or_running="$(kubectl -n "$NAMESPACE" get pods -l actions.github.com/scale-set-name="$DIND_RELEASE" -o json \
+      | jq '[.items[] | select(.status.phase == "Pending" or .status.phase == "Running")] | length')"
+    
+    desired="$(( (pending_or_running + RUNNERS_PER_NODE - 1) / RUNNERS_PER_NODE ))"
+    
+    if [ "$desired" -lt "$MIN_NODES" ]; then
+      desired="$MIN_NODES"
+    fi
+    if [ "$desired" -gt "$MAX_NODES" ]; then
+      desired="$MAX_NODES"
+    fi
+    
+    active=0
+    for node in "${NODES[@]}"; do
+      active=$((active + 1))
+      if [ "$active" -le "$desired" ]; then
+        echo "Ensuring VM is running: ${node}"
+        ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$SSH_TARGET" "virsh start '${node}' >/dev/null 2>&1 || true"
+      else
+        echo "Ensuring VM is stopped: ${node}"
+        ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$SSH_TARGET" "virsh shutdown '${node}' >/dev/null 2>&1 || true"
+      fi
+    done
+    
+    echo "KVM autoscaler finished: pending_or_running=${pending_or_running} desired_nodes=${desired}"

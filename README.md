@@ -1,54 +1,48 @@
 # talos-arc-kvm-unraid
 
-Declarative Talos + ARC on Unraid, with `/dev/kvm` available to selected GitHub runner jobs.
+Declarative Talos + ARC on Unraid with a dedicated tainted KVM worker pool for heavy runtime jobs.
 
 ## Target Topology
 
 - Unraid host: 1 physical machine with `/dev/kvm`
-- Talos cluster: 3 virtual nodes (1 control plane, 2 workers)
-- ARC: installed in Talos cluster
-- Runner scale set: container mode by default, KVM-capable pod template for selected jobs
+- Talos cluster: 1 control plane + 1 general worker + 3 KVM workers
+- ARC: two runner classes
+  - `arc-runners-container` for normal workflows
+  - `arc-runners-dind` for runtime-real workloads on KVM nodes
+- KVM worker pool: tainted and autoscaled to zero when idle
 
 ## Declarative Layers
 
 - `terraform/libvirt`: VM infrastructure definitions
-- `talos/`: Talos cluster config and patch files
-- `k8s/arc/`: ARC Helm values and runner scale-set values
-- `.github/workflows/`: apply + smoke workflows
+- `talos/`: Talos cluster node config
+- `k8s/arc/`: ARC controller + dual scale set values
+- `k8s/kvm-pool-autoscaler/`: in-cluster scaler that starts/stops KVM VMs over SSH
+- `.github/workflows/`: workflow-dispatch operations over Tailscale
 
-## Prerequisites
+## Operating Model
 
-- Unraid virtualization enabled (`/dev/kvm` present)
-- libvirt available on host
-- `terraform`, `talosctl`, `kubectl`, `helm`, `envsubst`
-- GitHub App credentials for ARC
+- Terraform apply is manual-first (local operator action via `mise`/`.env`/`TF_VAR_*`).
+- CI focuses on cluster-side installs and updates (ARC + autoscaler).
+- Private infra access from CI is done via Tailscale.
 
 ## Quick Flow
 
-1. Provision Talos VMs with Terraform.
-2. Generate/apply Talos configs.
-3. Bootstrap cluster and fetch kubeconfig.
-4. Install ARC controller and runner scale set.
-5. Run KVM smoke workflow against ARC runners.
+1. Manually apply Terraform when infra changes are needed.
+2. Bootstrap Talos and obtain kubeconfig/talosconfig.
+3. Run workflow `apply` with `run_arc_install=true`.
+4. Run workflow `kvm-smoke` on KVM-capable runner labels.
 
-## ARC Runtime Mode
+## ARC Runtime Split
 
-Default in this repo: container mode (no dind).
+- Container class (`arc-runners-container`): default low-cost jobs.
+- DIND class (`arc-runners-dind`): KVM-specific runtime-real jobs, scheduled only on tainted KVM nodes.
 
-If compatibility issues appear for Docker-dependent jobs, add a second runner class in dind mode and route only those workflows to it.
+## KVM Autoscaler Behavior
 
-## KVM Notes
+- Every 2 minutes, reads active dind runner pods.
+- Computes desired KVM VM count with min/max caps.
+- Starts/stops pre-provisioned KVM worker VMs via `virsh` over SSH.
 
-- `/dev/kvm` is a shared character device. Multiple VMs/processes can use it concurrently.
-- Capacity limits are CPU/RAM/IO, not a one-device-per-VM restriction.
+## GitHub Secrets
 
-## GitHub Secrets Required (apply workflow)
-
-- `LIBVIRT_URI`
-- `TALOSCONFIG_B64`
-- `KUBECONFIG_B64`
-- `ARC_GITHUB_CONFIG_URL`
-- `ARC_GITHUB_APP_ID`
-- `ARC_GITHUB_APP_INSTALLATION_ID`
-- `ARC_GITHUB_APP_PRIVATE_KEY`
-- Optional: `ARC_MAX_RUNNERS`, `ARC_MIN_RUNNERS`
+See `SECRETS.md`.

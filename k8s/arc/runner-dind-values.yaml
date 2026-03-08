@@ -1,0 +1,32 @@
+githubConfigUrl: ${ARC_GITHUB_CONFIG_URL}
+githubConfigSecret: arc-gha-secret
+
+maxRunners: ${ARC_DIND_MAX_RUNNERS}
+minRunners: ${ARC_DIND_MIN_RUNNERS}
+
+containerMode:
+  type: dind
+
+template:
+  spec:
+    nodeSelector:
+      nodepool.syscode.dev/type: kvm
+      arc.example.dev/kvm: "true"
+    tolerations:
+      - key: arc.example.dev/kvm
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+        securityContext:
+          runAsNonRoot: false
+        volumeMounts:
+          - name: dev-kvm
+            mountPath: /dev/kvm
+    volumes:
+      - name: dev-kvm
+        hostPath:
+          path: /dev/kvm
+          type: CharDevice

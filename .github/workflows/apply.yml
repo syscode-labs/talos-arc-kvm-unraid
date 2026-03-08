@@ -4,40 +4,83 @@ on:
   workflow_dispatch:
     inputs:
       run_terraform:
+        description: "Run Terraform apply remotely over libvirt URI"
+        type: boolean
+        default: false
+        required: true
+      run_arc_install:
+        description: "Install/upgrade ARC components"
         type: boolean
         default: true
         required: true
-      run_arc_install:
+      run_kvm_autoscaler_apply:
+        description: "Apply k8s KVM pool autoscaler manifests"
         type: boolean
         default: true
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   apply:
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     env:
+      TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
       LIBVIRT_DEFAULT_URI: ${{ secrets.LIBVIRT_URI }}
       ARC_GITHUB_CONFIG_URL: ${{ secrets.ARC_GITHUB_CONFIG_URL }}
       ARC_GITHUB_APP_ID: ${{ secrets.ARC_GITHUB_APP_ID }}
       ARC_GITHUB_APP_INSTALLATION_ID: ${{ secrets.ARC_GITHUB_APP_INSTALLATION_ID }}
       ARC_GITHUB_APP_PRIVATE_KEY: ${{ secrets.ARC_GITHUB_APP_PRIVATE_KEY }}
-      ARC_MAX_RUNNERS: ${{ secrets.ARC_MAX_RUNNERS }}
-      ARC_MIN_RUNNERS: ${{ secrets.ARC_MIN_RUNNERS }}
+      ARC_CONTAINER_MAX_RUNNERS: ${{ secrets.ARC_CONTAINER_MAX_RUNNERS }}
+      ARC_CONTAINER_MIN_RUNNERS: ${{ secrets.ARC_CONTAINER_MIN_RUNNERS }}
+      ARC_DIND_MAX_RUNNERS: ${{ secrets.ARC_DIND_MAX_RUNNERS }}
+      ARC_DIND_MIN_RUNNERS: ${{ secrets.ARC_DIND_MIN_RUNNERS }}
       TALOSCONFIG_B64: ${{ secrets.TALOSCONFIG_B64 }}
       KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+      KVM_AUTOSCALER_UNRAID_SSH_TARGET: ${{ secrets.KVM_AUTOSCALER_UNRAID_SSH_TARGET }}
+      KVM_AUTOSCALER_SSH_PRIVATE_KEY: ${{ secrets.KVM_AUTOSCALER_SSH_PRIVATE_KEY }}
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Connect runner to tailnet
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          tags: tag:ci
 
       - name: Validate required secrets
         run: |
-          required=(LIBVIRT_DEFAULT_URI ARC_GITHUB_CONFIG_URL ARC_GITHUB_APP_ID ARC_GITHUB_APP_INSTALLATION_ID ARC_GITHUB_APP_PRIVATE_KEY)
+          required=(TAILSCALE_AUTHKEY ARC_GITHUB_CONFIG_URL ARC_GITHUB_APP_ID ARC_GITHUB_APP_INSTALLATION_ID ARC_GITHUB_APP_PRIVATE_KEY)
           for key in "${required[@]}"; do
             if [ -z "${!key:-}" ]; then
               echo "Missing required secret: ${key}" >&2
               exit 1
             fi
           done
+          if [ "${{ inputs.run_kvm_autoscaler_apply }}" = "true" ]; then
+            autoscaler_required=(KVM_AUTOSCALER_UNRAID_SSH_TARGET KVM_AUTOSCALER_SSH_PRIVATE_KEY)
+            for key in "${autoscaler_required[@]}"; do
+              if [ -z "${!key:-}" ]; then
+                echo "Missing required secret for autoscaler: ${key}" >&2
+                exit 1
+              fi
+            done
+          fi
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gettext-base
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          curl -fsSL -o kubectl https://dl.k8s.io/release/v1.31.4/bin/linux/amd64/kubectl
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
+
+      - name: Install terraform
+        if: ${{ inputs.run_terraform }}
+        uses: hashicorp/setup-terraform@v3
 
       - name: Write talosconfig
         run: |
@@ -57,14 +100,23 @@ jobs:
             echo "KUBECONFIG_B64 is empty; skipping kubeconfig write"
           fi
 
-      - name: Terraform apply (libvirt)
+      - name: Terraform apply (manual-only fallback)
         if: ${{ inputs.run_terraform }}
         working-directory: terraform/libvirt
         run: |
           terraform init
           terraform apply -auto-approve
 
-      - name: Install ARC
+      - name: Install ARC scale sets
         if: ${{ inputs.run_arc_install }}
         run: |
           ./k8s/arc/install.sh
+
+      - name: Apply KVM pool autoscaler
+        if: ${{ inputs.run_kvm_autoscaler_apply }}
+        run: |
+          kubectl -n arc-systems create secret generic kvm-pool-autoscaler \
+            --from-literal=unraid_ssh_target="${KVM_AUTOSCALER_UNRAID_SSH_TARGET}" \
+            --from-file=id_ed25519=<(printf '%s' "${KVM_AUTOSCALER_SSH_PRIVATE_KEY}") \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -k k8s/kvm-pool-autoscaler

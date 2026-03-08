@@ -5,9 +5,10 @@ on:
 
 jobs:
   smoke:
+    name: Validate KVM device access on ARC runner
     runs-on: [self-hosted, linux, arc, kvm]
     steps:
-      - name: Verify /dev/kvm exists
+      - name: Assert /dev/kvm is readable and writable
         run: |
           ls -l /dev/kvm
           test -r /dev/kvm

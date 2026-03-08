@@ -4,8 +4,10 @@ set -euo pipefail
 NAMESPACE="${ARC_NAMESPACE:-arc-systems}"
 CONTROLLER_NS="${ARC_CONTROLLER_NS:-arc-controller}"
 ARC_GITHUB_CONFIG_URL="${ARC_GITHUB_CONFIG_URL:?set ARC_GITHUB_CONFIG_URL}"
-ARC_MAX_RUNNERS="${ARC_MAX_RUNNERS:-6}"
-ARC_MIN_RUNNERS="${ARC_MIN_RUNNERS:-0}"
+ARC_CONTAINER_MAX_RUNNERS="${ARC_CONTAINER_MAX_RUNNERS:-20}"
+ARC_CONTAINER_MIN_RUNNERS="${ARC_CONTAINER_MIN_RUNNERS:-0}"
+ARC_DIND_MAX_RUNNERS="${ARC_DIND_MAX_RUNNERS:-6}"
+ARC_DIND_MIN_RUNNERS="${ARC_DIND_MIN_RUNNERS:-0}"
 
 helm repo add actions-runner-controller https://actions-runner-controller.github.io/actions-runner-controller
 helm repo update
@@ -23,11 +25,17 @@ helm upgrade --install arc-controller actions-runner-controller/gha-runner-scale
   -n "$CONTROLLER_NS" \
   -f k8s/arc/controller-values.yaml
 
-tmp_values="$(mktemp)"
-envsubst < k8s/arc/runner-values.yaml > "$tmp_values"
+container_values="$(mktemp)"
+dind_values="$(mktemp)"
+envsubst < k8s/arc/runner-container-values.yaml > "$container_values"
+envsubst < k8s/arc/runner-dind-values.yaml > "$dind_values"
 
-helm upgrade --install arc-runners actions-runner-controller/gha-runner-scale-set \
+helm upgrade --install arc-runners-container actions-runner-controller/gha-runner-scale-set \
   -n "$NAMESPACE" \
-  -f "$tmp_values"
+  -f "$container_values"
 
-rm -f "$tmp_values"
+helm upgrade --install arc-runners-dind actions-runner-controller/gha-runner-scale-set \
+  -n "$NAMESPACE" \
+  -f "$dind_values"
+
+rm -f "$container_values" "$dind_values"

@@ -14,8 +14,35 @@ nodes:
     ipAddress: 10.0.0.21
     controlPlane: false
     installDisk: /dev/vda
+    nodeLabels:
+      nodepool.syscode.dev/type: general
 
-  - hostname: arc-talos-wk-2
-    ipAddress: 10.0.0.22
+  - hostname: arc-talos-kvm-1
+    ipAddress: 10.0.0.31
     controlPlane: false
     installDisk: /dev/vda
+    nodeLabels:
+      nodepool.syscode.dev/type: kvm
+      arc.example.dev/kvm: "true"
+    nodeTaints:
+      - arc.example.dev/kvm=true:NoSchedule
+
+  - hostname: arc-talos-kvm-2
+    ipAddress: 10.0.0.32
+    controlPlane: false
+    installDisk: /dev/vda
+    nodeLabels:
+      nodepool.syscode.dev/type: kvm
+      arc.example.dev/kvm: "true"
+    nodeTaints:
+      - arc.example.dev/kvm=true:NoSchedule
+
+  - hostname: arc-talos-kvm-3
+    ipAddress: 10.0.0.33
+    controlPlane: false
+    installDisk: /dev/vda
+    nodeLabels:
+      nodepool.syscode.dev/type: kvm
+      arc.example.dev/kvm: "true"
+    nodeTaints:
+      - arc.example.dev/kvm=true:NoSchedule

@@ -1,4 +1,4 @@
-.PHONY: tf-init tf-plan tf-apply arc-install
+.PHONY: tf-init tf-plan tf-apply arc-install kvm-autoscaler-apply
 
 tf-init:
 	cd terraform/libvirt && terraform init
@@ -11,3 +11,6 @@ tf-apply:
 
 arc-install:
 	./k8s/arc/install.sh
+
+kvm-autoscaler-apply:
+	kubectl apply -k k8s/kvm-pool-autoscaler
