@@ -1,5 +1,10 @@
 # talos-arc-kvm-unraid
 
+[![apply](https://github.com/syscode-labs/talos-arc-kvm-unraid/actions/workflows/apply.yml/badge.svg)](https://github.com/syscode-labs/talos-arc-kvm-unraid/actions/workflows/apply.yml)
+[![kvm-smoke](https://github.com/syscode-labs/talos-arc-kvm-unraid/actions/workflows/kvm-smoke.yml/badge.svg)](https://github.com/syscode-labs/talos-arc-kvm-unraid/actions/workflows/kvm-smoke.yml)
+[![docs-pages](https://github.com/syscode-labs/talos-arc-kvm-unraid/actions/workflows/docs-pages.yml/badge.svg)](https://github.com/syscode-labs/talos-arc-kvm-unraid/actions/workflows/docs-pages.yml)
+[![docs](https://img.shields.io/badge/docs-github_pages-3451b2)](https://syscode-labs.github.io/talos-arc-kvm-unraid/)
+
 Declarative Talos + ARC on Unraid with a dedicated tainted KVM worker pool for heavy runtime jobs.
 
 ## Target Topology
