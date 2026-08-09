@@ -19,23 +19,9 @@ Concretely, this repo needs to provide:
 
 - [ ] **Confirm / stand up the target cluster.** The `image-factory-registry` plan targets the Omni-managed **`unraid-lab`** cluster (the only Unraid Talos cluster today). This repo's ARC values assume an ARC-hosting cluster exists; confirm ARC is actually deployed, and where. If ARC lives in a different cluster than Harbor, verify the runner→Harbor network path (tailnet route) rather than in-cluster DNS.
 - [ ] **Make the runners available to `syscode-labs/image-factory`.** `githubConfigUrl` is org-scoped, so an org repo can target `arc-runners-container` once the repo exists and (if a runner group restricts repos) the group allows it. Confirm the runner group / permissions.
-- [ ] **Inject the Harbor pull-robot credential via the pod template** (decision **3b** in the plan: the intranet credential must NOT be uploaded to GitHub as a repo secret). Create a k8s `Secret` in the runners namespace and mount it into the runner container in `k8s/arc/runner-container-values.yaml`:
+- [ ] ~~**Inject the Harbor pull-robot credential via the pod template.**~~ **Deferred — out of scope for this repo.** Credential delivery moves to the runtime-mint path (v1.1, see Notes): the `image-factory` mirror workflow obtains its Harbor credential when it runs, so this repo stores **no standing Harbor secret** and the runner pod needs no secret mount. This repo's ARC deliverable is therefore just (1) a targetable runner and (2) tailnet reach — see the two action items above. If the static-Secret path is ever chosen instead, note that a bare `envFrom` is insufficient in `containerMode: kubernetes`: k8s mode requires a job container by default (container-less jobs fail at "Initialize containers"), and a `container:` job runs in a separate workflow pod that does not inherit runner-pod env (ARC discussion #3152) — it would also need `ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER=false` and a container-less workflow.
 
-  ```yaml
-  # k8s/arc/runner-container-values.yaml — under template.spec.containers[name=runner]
-  template:
-    spec:
-      containers:
-        - name: runner
-          image: ghcr.io/actions/actions-runner:latest
-          envFrom:
-            - secretRef:
-                name: harbor-mirror-robot   # keys: HARBOR_USERNAME, HARBOR_PASSWORD
-  ```
-
-  The `image-factory` mirror workflow then reads `HARBOR_USERNAME`/`HARBOR_PASSWORD` from the runner environment (never from GitHub secrets) and does `crane auth login harbor.<tailnet>.ts.net -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD"`.
-
-- [ ] **Provision the `harbor-mirror-robot` Secret.** A Harbor **read-only** robot account scoped to the `image-factory` project. Populate the k8s Secret out-of-band (the same way `arc-gha-secret` is provisioned; add it to `SECRETS.md`). Pull-only, project-scoped, expirable, revocable.
+- [ ] ~~**Provision the `harbor-mirror-robot` Secret.**~~ Not needed under the runtime-mint decision above.
 
 ## What this repo does NOT own
 
